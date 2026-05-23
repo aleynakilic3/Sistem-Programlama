@@ -1,47 +1,47 @@
 #include "tarsau.h"
 
 /**
- * Kullanım bilgisini yazdır
+ * Kullanim bilgisini yazdir
  */
 void print_usage(const char *program_name) {
-    printf("Kullanım:\n");
-    printf("  Dosyaları birleştir (Build):\n");
-    printf("    %s -b dosya1 dosya2 ... [-o arşiv.sau]\n", program_name);
+    printf("Kullanim:\n");
+    printf("  Dosyalari birlestir (Build):\n");
+    printf("    %s -b dosya1 dosya2 ... [-o arsiv.sau]\n", program_name);
     printf("\n");
-    printf("  Arşivden aç (Extract):\n");
-    printf("    %s -a arşiv.sau [dizin]\n", program_name);
+    printf("  Arsivden ac (Extract):\n");
+    printf("    %s -a arsiv.sau [dizin]\n", program_name);
     printf("\n");
-    printf("Örnekler:\n");
+    printf("Ornekler:\n");
     printf("  %s -b t1 t2 t3 t4.txt t5.dat -o s1.sau\n", program_name);
     printf("  %s -a s1.sau d1\n", program_name);
 }
 
 /**
- * -b parametresi işleme
+ * -b parametresi isleme
  */
 int handle_build(int argc, char *argv[]) {
     char *output_file = DEFAULT_ARCHIVE;
     char **input_files = NULL;
     int input_count = 0;
     
-    /* Argümanları parse et */
+    /* Argumanlari parse et */
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0) {
-            /* Sonraki parametre çıkış dosyası */
+            /* Sonraki parametre cikis dosyasi */
             if (i + 1 < argc) {
                 output_file = argv[++i];
             } else {
-                fprintf(stderr, "Hata: -o parametresinden sonra dosya adı gerekli!\n");
+                fprintf(stderr, "Hata: -o parametresinden sonra dosya adi gerekli!\n");
                 return -1;
             }
         } else {
-            /* Girdi dosyası */
+            /* Girdi dosyasi */
             if (input_count >= MAX_FILES) {
                 fprintf(stderr, "Hata: En fazla %d dosya desteklenir!\n", MAX_FILES);
                 return -1;
             }
             
-            /* Dinamik array alloc yapabiliriz, ancak şimdilik basit çözüm */
+            /* Dinamik array alloc yapabiliriz, ancak simdililik basit cozum */
             if (input_files == NULL) {
                 input_files = (char **)malloc(MAX_FILES * sizeof(char *));
             }
@@ -49,16 +49,16 @@ int handle_build(int argc, char *argv[]) {
         }
     }
     
-    /* En az bir girdi dosyası var mı kontrol et */
+    /* En az bir girdi dosyasi var mi kontrol et */
     if (input_count == 0) {
-        fprintf(stderr, "Hata: En az bir girdi dosyası belirtilmeli!\n");
+        fprintf(stderr, "Hata: En az bir girdi dosyasi belirtilmeli!\n");
         print_usage(argv[0]);
         if (input_files != NULL) free(input_files);
         return -1;
     }
     
-    /* Build işlemini başlat */
-    printf("Dosyaları birleştiriliyor...\n");
+    /* Build islemini baslat */
+    printf("Dosyalar birlestiriliyor...\n");
     int result = build_archive(input_files, input_count, output_file);
     
     if (input_files != NULL) {
@@ -69,38 +69,47 @@ int handle_build(int argc, char *argv[]) {
 }
 
 /**
- * -a parametresi işleme
+ * -a parametresi isleme
  */
 int handle_archive(int argc, char *argv[]) {
     char *archive_file = NULL;
     char *extract_dir = NULL;
     
-    /* Parametre sayısı kontrol et */
+    /* Parametre sayisi kontrol et */
     if (argc < 3) {
-        fprintf(stderr, "Hata: -a parametresinden sonra en az arşiv dosyası adı gerekli!\n");
+        fprintf(stderr, "Hata: -a parametresinden sonra en az arsiv dosyasi adi gerekli!\n");
         return -1;
     }
     
     if (argc > 4) {
-        fprintf(stderr, "Hata: -a parametresinden sonra en fazla 2 parametre alınır!\n");
+        fprintf(stderr, "Hata: -a parametresinden sonra en fazla 2 parametre alinir!\n");
         return -1;
     }
     
-    /* Parametre 1: Arşiv dosyası */
+    /* Parametre 1: Arsiv dosyasi */
     archive_file = argv[2];
     
-    /* Parametre 2: Çıkartılacak dizin (opsiyonel) */
+    /* Parametre 2: Cikartilacak dizin (opsiyonel) */
     if (argc == 4) {
         extract_dir = argv[3];
     } else {
-        extract_dir = ".";  // Geçerli dizin
+        extract_dir = ".";  // Gecerli dizin
     }
     
-    /* Extract işlemini başlat */
-    printf("Arşiv açılıyor: %s -> %s\n", archive_file, extract_dir);
+    /* Extract islemini baslat */
+    printf("Arsiv aciliyor: %s -> %s\n", archive_file, extract_dir);
     int result = extract_archive(archive_file, extract_dir);
     
     return result;
+}
+
+/**
+ * Programin aninda kapanmasini engellemek icin bir tusa basilmasini bekle
+ */
+void wait_for_keypress() {
+    printf("\nDevam etmek icin Enter tusuna basin...");
+    fflush(stdout);
+    getchar();
 }
 
 /**
@@ -111,37 +120,40 @@ int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Hata: Parametre eksik!\n\n");
         print_usage(argv[0]);
+        wait_for_keypress();
         return 1;
     }
     
     int result = 0;
+    int exit_code = 0;
     
-    /* Parametereleri işle */
+    /* Parametereleri isle */
     if (strcmp(argv[1], "-b") == 0) {
         /* Build modu */
         result = handle_build(argc, argv);
         if (result == 0) {
-            printf("✓ Dosyalar başarıyla birleştirildi.\n");
+            printf("v Dosyalar basariyla birlestirildi.\n");
         } else {
-            printf("✗ Birleştirme işlemi başarısız.\n");
-            return 1;
+            printf("x Birlestirme islemi basarisiz.\n");
+            exit_code = 1;
         }
     } 
     else if (strcmp(argv[1], "-a") == 0) {
         /* Archive (Extract) modu */
         result = handle_archive(argc, argv);
         if (result == 0) {
-            printf("✓ Arşiv başarıyla açıldı.\n");
+            printf("v Arsiv basariyla acildi.\n");
         } else {
-            printf("✗ Arşiv açma işlemi başarısız.\n");
-            return 1;
+            printf("x Arsiv acma islemi basarisiz.\n");
+            exit_code = 1;
         }
     } 
     else {
-        fprintf(stderr, "Hata: Geçersiz parametre '%s'\n\n", argv[1]);
+        fprintf(stderr, "Hata: Gecersiz parametre '%s'\n\n", argv[1]);
         print_usage(argv[0]);
-        return 1;
+        exit_code = 1;
     }
     
-    return 0;
+    wait_for_keypress();
+    return exit_code;
 }

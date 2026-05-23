@@ -1,58 +1,58 @@
 #include "tarsau.h"
 
 /**
- * Build Archive: Girdi dosyalarını .sau formatında arşive yaz
+ * Build Archive: Girdi dosyalarini .sau formatinda arsive yaz
  * 
- * .sau Formatı:
+ * .sau Formati:
  * [10 bayt: header boyutu ASCII]
  * |dosya1,izinler,boyut|dosya2,izinler,boyut|...|
- * [dosya1 içeriği][dosya2 içeriği]...
+ * [dosya1 icerigi][dosya2 icerigi]...
  */
 int build_archive(char **input_files, int input_count, const char *output_file) {
     FILE *out_fp = NULL;
     FILE *in_fp = NULL;
     unsigned long total_header_size = 0;
     unsigned long total_files_size = 0;
-    char header_buffer[10000];  /* Header bilgilerini burada topla */
-    unsigned char file_buffer[65536];  /* Dosya okuma buffer'ı */
+    char header_buffer[HEADER_BUFFER_SIZE];  /* Header bilgilerini burada topla */
+    unsigned char file_buffer[65536];        /* Dosya okuma buffer'i */
     
-    /* ===== ADIM 1: Girdi dosyalarını kontrol et ===== */
-    printf("\n[1] Girdi dosyaları kontrol ediliyor...\n");
+    /* ===== ADIM 1: Girdi dosyalarini kontrol et ===== */
+    printf("\n[1] Girdi dosyalari kontrol ediliyor...\n");
     
     for (int i = 0; i < input_count; i++) {
         printf("  - %s: ", input_files[i]);
         
-        /* Dosya var mı? */
+        /* Dosya var mi? */
         if (!file_exists(input_files[i])) {
-            fprintf(stderr, "✗ HATA: Dosya bulunamadı!\n");
+            fprintf(stderr, "x HATA: Dosya bulunamadi!\n");
             return -1;
         }
         
-        /* Dosya metin dosyası mı? */
+        /* Dosya metin dosyasi mi? */
         if (!is_text_file(input_files[i])) {
-            fprintf(stderr, "%s giriş dosyasının formatı uyumsuzdur!\n", input_files[i]);
+            fprintf(stderr, "%s giris dosyasinin formati uyumsuzdur!\n", input_files[i]);
             return -1;
         }
         
         /* Dosya boyutu al */
         long file_size = get_file_size(input_files[i]);
         if (file_size < 0) {
-            fprintf(stderr, "✗ HATA: Dosya boyutu alınamadı!\n");
+            fprintf(stderr, "x HATA: Dosya boyutu alinamadi!\n");
             return -1;
         }
         
         /* Toplam boyut kontrol et (200 MB) */
         total_files_size += file_size;
         if (total_files_size > MAX_ARCHIVE_SIZE) {
-            fprintf(stderr, "✗ HATA: Toplam dosya boyutu 200 MB'ı aştı!\n");
+            fprintf(stderr, "x HATA: Toplam dosya boyutu 200 MB'i asti!\n");
             return -1;
         }
         
-        printf("✓ (%ld byte)\n", file_size);
+        printf("v (%ld byte)\n", file_size);
     }
     
-    /* ===== ADIM 2: Header bölümünü oluştur ===== */
-    printf("\n[2] Header bölümü oluşturuluyor...\n");
+    /* ===== ADIM 2: Header bolumunu olustur ===== */
+    printf("\n[2] Header bolumu olusturuluyor...\n");
     
     memset(header_buffer, 0, sizeof(header_buffer));
     int header_pos = 0;
@@ -61,35 +61,39 @@ int build_archive(char **input_files, int input_count, const char *output_file) 
         mode_t permissions = get_file_permissions(input_files[i]);
         long file_size = get_file_size(input_files[i]);
         
-        /* Header formatı: |dosya_adı,izinler,boyut| */
+        /* Header formati: |dosya_adi,izinler,boyut| */
+        int remaining = sizeof(header_buffer) - header_pos;
         int written = snprintf(
             header_buffer + header_pos,
-            sizeof(header_buffer) - header_pos,
+            remaining,
             "|%s,%o,%ld",
             input_files[i],
-            permissions,
+            (unsigned int)permissions,
             file_size
         );
         
-        if (written < 0) {
-            fprintf(stderr, "✗ HATA: Header oluşturulurken hata!\n");
+        if (written < 0 || written >= remaining) {
+            fprintf(stderr, "x HATA: Header buffer yetersiz! Cok fazla dosya veya cok uzun dosya isimleri.\n");
             return -1;
         }
         
         header_pos += written;
     }
     
-    /* Son ayırıcı ekle */
+    /* Son ayirici ekle */
     if (header_pos + 1 < (int)sizeof(header_buffer)) {
         header_buffer[header_pos++] = RECORD_SEPARATOR;
         header_buffer[header_pos] = '\0';
+    } else {
+        fprintf(stderr, "x HATA: Header buffer doldu!\n");
+        return -1;
     }
     
     total_header_size = header_pos;
     printf("  Header boyutu: %lu bayt\n", total_header_size);
     
-    /* ===== ADIM 3: Çıktı dosyasını aç ===== */
-    printf("\n[3] Arşiv dosyası yazılıyor (%s)...\n", output_file);
+    /* ===== ADIM 3: Cikti dosyasini ac ===== */
+    printf("\n[3] Arsiv dosyasi yaziliyor (%s)...\n", output_file);
     
     out_fp = fopen(output_file, "wb");
     if (out_fp == NULL) {
@@ -97,7 +101,7 @@ int build_archive(char **input_files, int input_count, const char *output_file) 
         return -1;
     }
     
-    /* ===== ADIM 4: İlk 10 bayt yazılıyor (header boyutu) ===== */
+    /* ===== ADIM 4: Ilk 10 bayt yaziliyor (header boyutu) ===== */
     char size_buffer[11];
     snprintf(size_buffer, sizeof(size_buffer), "%010lu", total_header_size);
     size_buffer[10] = '\0';
@@ -107,18 +111,18 @@ int build_archive(char **input_files, int input_count, const char *output_file) 
         fclose(out_fp);
         return -1;
     }
-    printf("  ✓ Header boyutu yazıldı: %s\n", size_buffer);
+    printf("  v Header boyutu yazildi: %s\n", size_buffer);
     
-    /* ===== ADIM 5: Header bölümü yazılıyor ===== */
+    /* ===== ADIM 5: Header bolumu yaziliyor ===== */
     if (fwrite(header_buffer, 1, total_header_size, out_fp) != total_header_size) {
         perror("fwrite (header)");
         fclose(out_fp);
         return -1;
     }
-    printf("  ✓ Header kaydı yazıldı\n");
+    printf("  v Header kaydi yazildi\n");
     
-    /* ===== ADIM 6: Dosya içerikleri yazılıyor ===== */
-    printf("\n[4] Dosya içerikleri ekleniyor...\n");
+    /* ===== ADIM 6: Dosya icerikleri yaziliyor ===== */
+    printf("\n[4] Dosya icerikleri ekleniyor...\n");
     
     for (int i = 0; i < input_count; i++) {
         in_fp = fopen(input_files[i], "rb");
@@ -131,7 +135,7 @@ int build_archive(char **input_files, int input_count, const char *output_file) 
         printf("  - %s: ", input_files[i]);
         fflush(stdout);
         
-        /* Dosya içeriğini oku ve yaz */
+        /* Dosya icerigini oku ve yaz */
         size_t bytes_read;
         unsigned long total_written = 0;
         
@@ -152,18 +156,18 @@ int build_archive(char **input_files, int input_count, const char *output_file) 
             return -1;
         }
         
-        printf("✓ (%lu byte)\n", total_written);
+        printf("v (%lu byte)\n", total_written);
         fclose(in_fp);
     }
     
-    /* ===== ADIM 7: Dosya kapat ve sonuç ===== */
+    /* ===== ADIM 7: Dosya kapat ve sonuc ===== */
     fclose(out_fp);
     
-    printf("\n[✓] Başarılı!\n");
-    printf("  Arşiv dosyası: %s\n", output_file);
+    printf("\n[v] Basarili!\n");
+    printf("  Arsiv dosyasi: %s\n", output_file);
     printf("  Toplam dosya boyutu: %lu bayt\n", total_files_size);
     printf("  Header boyutu: %lu bayt\n", total_header_size);
-    printf("  Arşiv boyutu: %lu bayt\n", total_files_size + total_header_size + 10);
+    printf("  Arsiv boyutu: %lu bayt\n", total_files_size + total_header_size + 10);
     
     return 0;
 }
