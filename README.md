@@ -518,8 +518,8 @@ Bu proje **MIT Lisansı** altında lisanslanmıştır. Detaylar için `LICENSE` 
 
 | Rol | Kişi | GitHub |
 |-----|------|--------|
-| Geliştirici | Aleyna Kılıç | aleynakilic3 |
-| Geliştirici | Ebrar Ceren Taşcı | ecerentasci |
+| Geliştirici | Aleyna Kılıç | [@aleynakilic3](https://github.com/aleynakilic3) |
+| Geliştirici | Ebrar Ceren Taşcı | [@ecerentasci](https://github.com/ecerentasci) |
 
 ---
 
@@ -557,7 +557,7 @@ Sorularınız için:
 ### Faydalı Buldun mu? Repo'yu yıldızla!
 
 ```bash
-git clone https://github.com/[username]/tarsau.git
+git clone https://github.com/aleynakilic3/tarsau.git
 cd tarsau
 make && ./tarsau -h
 ```
